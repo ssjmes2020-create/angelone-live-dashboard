@@ -69,7 +69,7 @@ with col_top3:
 st.divider()
 
 # --- ३. मुख्य लेआउट: अलर्ट्स विंडो आणि ऑप्शन चेन मॅट्रिक्स ---
-col_alerts, col_matrix = st.columns()
+col_alerts, col_matrix = st.columns(2)
 
 with col_alerts:
     st.subheader("🚨 Live Smart Alerts")
