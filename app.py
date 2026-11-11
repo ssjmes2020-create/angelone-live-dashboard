@@ -16,7 +16,7 @@ if 'alert_history' not in st.session_state:
     st.session_state.alert_history = []
 
 # --- १. टॉप बार: ड्रॉपडाऊन आणि मुख्य इंडिकेटर्स ---
-col_top1, col_top2, col_top3 = st.columns()
+col_top1, col_top2, col_top3 = st.columns(3)
 
 with col_top1:
     selected_index = st.selectbox("🎯 इंडेक्स निवडा (Select Index):", ["NIFTY", "BANKNIFTY", "SENSEX"])
