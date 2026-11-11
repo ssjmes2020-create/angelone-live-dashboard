@@ -9,7 +9,6 @@ from SmartApi import SmartConnect
 # १. व्यावसायिक लेआउट डिझाईन (Wide Mode)
 st.set_page_config(layout="wide", page_title="Professional Trading Terminal")
 
-# स्क्रीनशॉट्स प्रमाणे सुंदर रंगांचे स्टायलिंग (CSS)
 st.markdown("""
     <style>
     .stTabs [data-baseweb="tab-list"] { gap: 10px; }
@@ -23,7 +22,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🛡️ Pro-Trader Analytics Terminal")
-st.caption("Advanced Real-Time Workspace inspired by Elite Trading Platforms")
+st.caption("Advanced Real-Time Workspace - Stable Version")
 
 # --- सेशन्स आणि स्टेट मॅनेजमेंट ---
 if 'alert_history' not in st.session_state:
@@ -48,21 +47,25 @@ def init_angel_login():
 
 smart_api = init_angel_login()
 
-# ३. टॉप इंडेक्स बार (जसा तुमच्या तिसऱ्या स्क्रीनशॉटमध्ये आहे)
-col_ind1, col_ind2, col_ind3 = st.columns(3)
-with col_ind1:
-    selected_index = st.selectbox("🎯 Active Trading Index:", ["NIFTY", "BANKNIFTY", "SENSEX"])
+# ३. टॉप इंडेक्स बार
+selected_index = st.selectbox("🎯 Active Trading Index:", ["NIFTY", "BANKNIFTY", "SENSEX"])
 
 st.divider()
 
-# --- ४. मल्टि-स्क्रीन टॅब रचना (मगाच्या प्रतिमेसारखी हुबेहूब रचना) ---
+# --- ४. मल्टि-स्क्रीन टॅब रचना ---
 tab_chart, tab_chain, tab_alerts = st.tabs(["📈 Charts & Quick Orders", "⛓️ Option Chain Desk", "📊 Analysis & Alert Stream"])
 
-# नो-ब्लिंक कंटेनर्स सेटअप
+# नो-ब्लिंक कंटेनर्स सेटअप (Duplicate Element ID एरर टाळण्यासाठी कंन्टेनर लॉक केले आहेत)
 with tab_chart:
     chart_metric_empty = st.empty()
     chart_view_empty = st.empty()
-    order_panel_empty = st.empty() # दुसऱ्या स्क्रीनशॉटसारखा ऑर्डर पॅनल
+    st.markdown("<p style='font-weight:bold; color:#2e5bffd1;'>⚡ SCALPER MODE ORDERS</p>", unsafe_allow_html=True)
+    # बटन वारंवार री-क्रिएट न करता स्थिर ठेवण्यासाठी लूपच्या बाहेर फक्त एक वेळेस ठेवले आहेत
+    b1, b2, b3, b4 = st.columns(4)
+    b1.button("🟢 BUY CALL (ATM)", key="btn_buy_ce", use_container_width=True)
+    b2.button("🔴 BUY PUT (ATM)", key="btn_buy_pe", use_container_width=True)
+    b3.button("🟥 EXIT POSITIONS", key="btn_exit", use_container_width=True)
+    status_placeholder = b4.empty()
 
 with tab_chain:
     chain_metric_empty = st.empty()
@@ -76,7 +79,6 @@ with tab_alerts:
 
 # --- ५. टिक-बाय-टिक डेटा इंजिन ---
 def fetch_terminal_data(api_obj, index_name):
-    # तुमच्या पहिल्या प्रतिमेप्रमाणे अचूक २५,३०० चा चालू भाव सेट केला आहे
     base_p = 25308.40 if index_name == "NIFTY" else (60973.15 if index_name == "BANKNIFTY" else 82101.95)
     step = 50 if index_name == "NIFTY" else 100
     
@@ -101,7 +103,6 @@ def fetch_terminal_data(api_obj, index_name):
     data = []
     ts = time.strftime('%H:%M:%S')
     
-    # कॅन्डलस्टिक मूव्हमेंट
     new_row = {
         'Time': ts, 'Open': base_p - np.random.uniform(-2, 2),
         'High': base_p + np.random.uniform(0, 4), 'Low': base_p - np.random.uniform(0, 4),
@@ -135,22 +136,26 @@ def fetch_terminal_data(api_obj, index_name):
             "PE_Volume": np.random.randint(10, 90) * 100000,
         }
         
-        if ce_oi_chg < -100000:
-            st.session_state.alert_history.insert(0, f"⏱️ {ts} | [🚨 SHORT COVERING] {s} CE मधुन कॉल रायटर्स पळाले!")
+        if ce_oi_chg < -120000:
+            msg = f"⏱️ {ts} | [🚨 SHORT COVERING] {s} CE मधुन कॉल रायटर्स पळाले!"
+            if msg not in st.session_state.alert_history:
+                st.session_state.alert_history.insert(0, msg)
         if pe_oi_chg > 250000:
-            st.session_state.alert_history.insert(0, f"⏱️ {ts} | [🔥 PUT WRITING] {s} PE वर मोठा सपोर्ट निर्माण झाला!")
+            msg = f"⏱️ {ts} | [🔥 PUT WRITING] {s} PE वर मोठा सपोर्ट निर्माण झाला!"
+            if msg not in st.session_state.alert_history:
+                st.session_state.alert_history.insert(0, msg)
             
         data.append(row)
     return pd.DataFrame(data), base_p, atm_strike
 
-# --- ६. रिफ्रेशिंग लूप ---
+# --- ६. रिफ्रेशिंग लूप (No-Blink & Error-Free) ---
 while True:
     df, spot_price, atm_strike = fetch_terminal_data(smart_api, selected_index)
     total_ce_oi = df["CE_OI"].sum()
     total_pe_oi = df["PE_OI"].sum()
     pcr = total_pe_oi / total_ce_oi
     
-    # तिन्ही स्क्रीनचे टॉप मेट्रिक्स अपडेट करणे
+    # मेट्रिक्स अपडेट
     for m_box in [chart_metric_empty, chain_metric_empty, alert_metric_empty]:
         with m_box.container():
             cx, cy, cz = st.columns(3)
@@ -158,7 +163,7 @@ while True:
             cy.metric(label="📊 Put-Call Ratio (PCR)", value=f"{pcr:.2f}")
             cz.metric(label="🎯 ATM Strike Price", value=f"{atm_strike}")
 
-    # SCREEN 1: चार्ट आणि ऑर्डर पॅनल (दुसऱ्या प्रतिमेसारखा लूक)
+    # SCREEN 1: टेक्निकल चार्ट और स्थिर स्टेटस पॅनल
     with chart_view_empty.container():
         fig_c = go.Figure(data=[go.Candlestick(
             x=st.session_state.price_history['Time'], open=st.session_state.price_history['Open'],
@@ -168,25 +173,17 @@ while True:
         fig_c.update_layout(xaxis_rangeslider_visible=False, height=400, margin=dict(l=10, r=10, t=10, b=10))
         st.plotly_chart(fig_c, use_container_width=True)
         
-    with order_panel_empty.container():
-        # दुसऱ्या प्रतिमेप्रमाणे खाली क्विक ऑर्डर पॅनल व्यवस्था
-        st.markdown("<p style='font-weight:bold; color:#2e5bffd1;'>⚡ SCALPER MODE ORDERS</p>", unsafe_allow_html=True)
-        b1, b2, b3, b4 = st.columns(4)
-        b1.button("🟢 BUY CALL (ATM)", use_container_width=True)
-        b2.button("🔴 BUY PUT (ATM)", use_container_width=True)
-        b3.button("🟥 EXIT POSITIONS", use_container_width=True)
-        b4.success(f"🎯 Ready to Place Order for {selected_index}")
+    # बटनच्या बाजूला फक्त रेडी मेसेज रिफ्रेश करणे
+    status_placeholder.success(f"🎯 Ready to Place Order for {selected_index}")
 
-    # SCREEN 2: हुबेहूब पहिल्या प्रतिमेसारखी ऑप्शन चेन रचना
+    # SCREEN 2: ऑप्शन चेन ग्रिड
     with chain_view_empty.container():
         chain_df = df.copy()
-        # कॉलमचा क्रम आणि नावे तुमच्या पहिल्या प्रतिमेप्रमाणे हुबेहूब सेट केली आहेत
         chain_df.columns = [
             "Volume (CALL)", "OI Change (CALL)", "OI (CALL)", "LTP (CALL)", "CE IV", "CE Delta",
             "Strike",
             "LTP (PUT)", "PE Delta", "PE IV", "OI (PUT)", "OI Change (PUT)", "Volume (PUT)"
         ]
-        # ग्रीक्स लपवून फक्त प्रतिमेसारखा मुख्य डेटा दाखवणे
         clean_chain = chain_df[["Volume (CALL)", "OI Change (CALL)", "OI (CALL)", "LTP (CALL)", "Strike", "LTP (PUT)", "OI (PUT)", "OI Change (PUT)", "Volume (PUT)"]]
         
         st.dataframe(
